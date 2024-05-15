@@ -55,5 +55,5 @@ jobs:
           push-to-registry: true
       - name: Test
         run: |
-          curl -L http://ghcr.io/v2/${{ env.IMAGE_NAME }}/tags/list
+          curl -H "Authorization: Basic $(echo ${{github.actor}}:${{secrets.GITHUB_TOKEN}} | base64)" -L http://ghcr.io/v2/${{ env.IMAGE_NAME }}/tags/list
           # cat sbom.spdx.json
