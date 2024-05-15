@@ -55,5 +55,5 @@ jobs:
           push-to-registry: true
       - name: Test
         run: |
-          curl -v http://ghcr.io/v2/${{ env.IMAGE_NAME }}/tags/list
+          curl -L http://ghcr.io/v2/${{ env.IMAGE_NAME }}/tags/list
           # cat sbom.spdx.json
