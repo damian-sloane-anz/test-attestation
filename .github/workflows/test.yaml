@@ -1,0 +1,71 @@
+---
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+name: "Workflow Attestation Test"
+
+on:
+  push:
+
+jobs:
+  build:
+    name: "Secure CI Framework"
+    runs-on: "ubuntu-latest"
+    # runs-on: "anzx-default-np"
+    permissions:
+      id-token: write
+      packages: write
+      contents: read
+      attestations: write
+    env:
+      REGISTRY: "localhost:5000"
+      IMAGE_NAME: "hello-world"
+    steps:
+      #- name: "Checkout Application Source Code Repository"
+      #  uses: "actions/checkout@v4"
+      - run: |
+          API_URL="https://api.github.com/meta"
+
+          # Make the API request and get the JSON response
+          response=$(curl -s $API_URL)
+          
+          # Extract the actions IP ranges using jq
+          actions_ip_ranges=$(echo $response | jq -r '.actions[]')
+          
+          # Print the list of IP address ranges
+          echo "GitHub Actions IP Address Ranges:"
+          echo "$actions_ip_ranges"
+      - name: "Setup Mock Docker Registry For Testing"
+        run: docker run -d -p 5000:5000 --name registry registry:2.7
+
+      - name: "Pull and retag alpine"
+        run: |
+          docker pull alpine:latest
+          docker tag alpine:latest ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          image_digest=$(docker inspect --format='{{index .RepoDigests 0}}' ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest | grep -oP '(?<=sha256:)\w+')
+          echo "IMAGE_DIGEST=${image_digest}" >> $GITHUB_ENV
+      - name: Generate SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          format: 'spdx-json'
+          output-file: 'sbom.spdx.json'
+
+      - name: Attest SBOM
+        uses: actions/attest-sbom@v1
+        with:
+          subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          subject-digest: sha256:${{ env.IMAGE_DIGEST }}
+          sbom-path: 'sbom.spdx.json'
+          push-to-registry: true
+
+      - name: Attest Build Provenance
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          subject-digest: sha256:${{ env.IMAGE_DIGEST }}
+          push-to-registry: false
+
+      - name: Test
+        run: |
+          curl -s http://localhost:5000/v2/${{ env.IMAGE_NAME }}/tags/list | jq . || true
+          # cat sbom.spdx.json
