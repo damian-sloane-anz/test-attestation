@@ -28,7 +28,7 @@ jobs:
       - name: "Pull and retag alpine"
         run: |
           docker pull alpine:latest
-          docker tag alpine:latest ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          docker tag alpine:latest ${{ env.REGISTRY }}/${{ github.actor }}/${{ env.IMAGE_NAME }}:latest
           docker push ${{ env.REGISTRY }}/${{ github.actor }}/${{ env.IMAGE_NAME }}:latest
           image_digest=$(docker inspect --format='{{index .RepoDigests 0}}' ${{ env.REGISTRY }}/${{ github.actor }}/${{ env.IMAGE_NAME }}:latest | grep -oP '(?<=sha256:)\w+')
           echo "IMAGE_DIGEST=${image_digest}" >> $GITHUB_ENV          
