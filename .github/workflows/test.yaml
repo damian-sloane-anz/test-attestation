@@ -29,26 +29,26 @@ jobs:
         run: |
           docker pull alpine:latest
           docker tag alpine:latest ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
-          docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
-          image_digest=$(docker inspect --format='{{index .RepoDigests 0}}' ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest | grep -oP '(?<=sha256:)\w+')
-          echo "IMAGE_DIGEST=${image_digest}" >> $GITHUB_ENV
+          docker push ${{ env.REGISTRY }}/${{ github.actor }}/${{ env.IMAGE_NAME }}:latest
+          image_digest=$(docker inspect --format='{{index .RepoDigests 0}}' ${{ env.REGISTRY }}/${{ github.actor }}/${{ env.IMAGE_NAME }}:latest | grep -oP '(?<=sha256:)\w+')
+          echo "IMAGE_DIGEST=${image_digest}" >> $GITHUB_ENV          
       - name: Generate SBOM
         uses: anchore/sbom-action@v0
         with:
-          image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          image: ${{ env.REGISTRY }}/${{ github.actor }}/${{ env.IMAGE_NAME }}:latest
           format: 'spdx-json'
           output-file: 'sbom.spdx.json'
       - name: Attest SBOM
         uses: actions/attest-sbom@v1
         with:
-          subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          subject-name: ${{ env.REGISTRY }}/${{ github.actor }}/${{ env.IMAGE_NAME }}
           subject-digest: sha256:${{ env.IMAGE_DIGEST }}
           sbom-path: 'sbom.spdx.json'
           push-to-registry: true
       - name: Attest Build Provenance
         uses: actions/attest-build-provenance@v1
         with:
-          subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          subject-name: ${{ env.REGISTRY }}/${{ github.actor }}/${{ env.IMAGE_NAME }}
           subject-digest: sha256:${{ env.IMAGE_DIGEST }}
           push-to-registry: true
       - name: Test
